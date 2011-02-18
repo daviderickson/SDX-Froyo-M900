@@ -37,7 +37,7 @@
 #define BMA150_READ_ACCEL_XYZ           _IOWR(BMA150_IOC_MAGIC,46,short)
 #define BMA150_IOC_MAXNR            	48
 
-#define DEBUG							0
+#define DEBUG							1
 
 /* BMA020 I2C Address */
 

@@ -15,11 +15,13 @@
 #include <linux/i2c.h>
 #include <linux/kernel.h>
 #include "bma020_i2c.h"
-
+#include "bma020.h"
 
 #define I2C_M_WR				0x00
 #define I2C_DF_NOTIFY			0x01
 
+static int __devinit bma020_probe(struct i2c_client *, const struct i2c_device_id *);
+static int __devexit bma020_remove(struct i2c_client *);
 
 static struct i2c_client *g_client;	
 
@@ -85,13 +87,7 @@ char i2c_acc_bma020_write( u8 reg, u8 *val )
 	return err;
 }
 
-static int __devinit bma020_probe(struct i2c_client *client,
-			const struct i2c_device_id *id)
-{
-        printk("%s called \n",__func__);
-		g_client = client;
-        return 0;
-}
+MODULE_DEVICE_TABLE(i2c, bma020_ids);
 
 static int __devexit bma020_remove(struct i2c_client *client)
 {	
@@ -100,23 +96,45 @@ static int __devexit bma020_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id bma020_ids[] = {	
-	{ "bma020", 0 },
+	{ "kr3dm_i2c_driver", 0 },
 	{ }
 };
-
-MODULE_DEVICE_TABLE(i2c, bma020_ids);
 
 struct i2c_driver acc_bma020_i2c_driver =
 {
 	.driver	= {
-		.name	= "bma020",
+		.name	= "kr3dm_i2c_driver",
 	},
+	.class		= I2C_CLASS_HWMON,
 	.probe		= bma020_probe,
 	.remove		= __devexit_p(bma020_remove),
 	.id_table	= bma020_ids,
 
 };
 
+static int __devinit bma020_probe(struct i2c_client *client,
+			const struct i2c_device_id *id)
+{
+	int err = 0;
+
+        printk("BMA020 %s called \n",__func__);
+
+        if ( !i2c_check_functionality(client->adapter,I2C_FUNC_SMBUS_BYTE_DATA) ) {
+                printk(KERN_INFO "byte op is not permited.\n");
+                goto ERROR0;
+        }
+
+	client->addr = BMA020_I2C_ADDR >> 1;
+        client->driver = &acc_bma020_i2c_driver;
+        client->flags = I2C_DF_NOTIFY | I2C_M_IGNORE_NAK;
+
+	g_client = client;
+        return 0;
+
+ERROR0:
+        printk(KERN_ERR "[KR3DM][%s] probe failed!\n", __func__);
+        return err;
+}
 int i2c_acc_bma020_init(void)
 {
 	int ret;

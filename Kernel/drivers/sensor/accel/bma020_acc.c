@@ -20,7 +20,7 @@
 // usage :	(at the path) type "cat bma020" , it will show short information for current accelation
 // 			use it for simple working test only
 
-//#define BMA020_PROC_FS
+#define BMA020_PROC_FS
 
 #ifdef BMA020_PROC_FS
 
@@ -102,7 +102,7 @@ static irqreturn_t bma020_acc_isr( int irq, void *unused, struct pt_regs *regs )
 int bma020_open (struct inode *inode, struct file *filp)
 {
 	printk("%s \n",__func__); 	
-	gprintk("start\n");
+	printk("start\n");
 	return 0;
 }
 
@@ -131,14 +131,14 @@ int bma020_ioctl(struct inode *inode, struct file *filp, unsigned int ioctl_num,
 	unsigned int arg_data; 
 	int err = 0;
 	
-	gprintk("start\n");
+	printk("start\n");
 	switch( ioctl_num )
 	{
 		case IOCTL_BMA020_GET_ACC_VALUE :
 			{
 				bma020_read_accel_xyz( &accels );
 
-				gprintk( "acc data x = %d  /  y =  %d  /  z = %d\n", accels.x, accels.y, accels.z );
+				printk( "acc data x = %d  /  y =  %d  /  z = %d\n", accels.x, accels.y, accels.z );
 				
 				if( copy_to_user( (bma020acc_t*)arg, &accels, sizeof(bma020acc_t) ) )
 				{
@@ -351,7 +351,7 @@ int bma020_acc_start(void)
 		return result;
 	}
 	
-	acc_class = class_create (THIS_MODULE, "BMA-dev");
+	acc_class = class_create (THIS_MODULE, "KR3DM-dev");
 	
 	if (IS_ERR(acc_class)) 
 	{
@@ -359,7 +359,7 @@ int bma020_acc_start(void)
 		return PTR_ERR( acc_class );
 	}
 
-	dev_t = device_create( acc_class, NULL, MKDEV(BMA150_MAJOR, 0), "%s", "accelerometer");
+	dev_t = device_create( acc_class, NULL, MKDEV(BMA150_MAJOR, 0), "%s", "kr3dm");
 
 	if (IS_ERR(dev_t)) 
 	{
@@ -378,11 +378,11 @@ int bma020_acc_start(void)
 
 	bma020_chip_init();
 
-	gprintk("[BMA020] read_xyz ==========================\n");
+	printk("[BMA020] read_xyz ==========================\n");
 	bma020_read_accel_xyz( &accels );
-	gprintk("[BMA020] x = %d  /  y =  %d  /  z = %d\n", accels.x, accels.y, accels.z );
+	printk("[BMA020] x = %d  /  y =  %d  /  z = %d\n", accels.x, accels.y, accels.z );
 
-	gprintk("[BMA020] ===================================\n");
+	printk("[BMA020] ===================================\n");
 	
 	/* only for test */
 	#if 0
@@ -404,14 +404,14 @@ int bma020_acc_start(void)
 #endif	//BMA020_PROC_FS
 
 	bma020_set_mode(BMA020_MODE_SLEEP);
-	gprintk("[BMA020] set_mode BMA020_MODE_SLEEP\n");
+	printk("[BMA020] set_mode BMA020_MODE_SLEEP\n");
 	
 	return 0;
 }
 
 void bma020_acc_end(void)
 {
-	unregister_chrdev( BMA150_MAJOR, "accelerometer" );
+	unregister_chrdev( BMA150_MAJOR, "kr3dm" );
 	
 	i2c_acc_bma020_exit();
 
@@ -487,7 +487,7 @@ static struct platform_driver bma020_accelerometer_driver = {
 	.suspend = bma020_accelerometer_suspend,
 	.resume  = bma020_accelerometer_resume,
 	.driver  = {
-		.name = "bma020-accelerometer", 
+		.name = "kr3dm-accelerometer", 
 	}
 };
 
@@ -504,7 +504,7 @@ static int __init bma020_acc_init(void)
 		return result;
 	}
 
-	bma020_accelerometer_device  = platform_device_register_simple( "bma020-accelerometer", -1, NULL, 0 );
+	bma020_accelerometer_device  = platform_device_register_simple( "kr3dm-accelerometer", -1, NULL, 0 );
 	
 	if( IS_ERR( bma020_accelerometer_device ) )
 	{
@@ -517,7 +517,7 @@ static int __init bma020_acc_init(void)
 
 static void __exit bma020_acc_exit(void)
 {
-	gprintk("start\n");
+	printk("start\n");
 	bma020_acc_end();
 
 //	free_irq(bma020_irq_num, NULL);
