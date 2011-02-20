@@ -22,6 +22,10 @@
 #define KR3DM_SET_BANDWIDTH             _IOWR(KR3DM_IOC_MAGIC,8, unsigned char)
 #define KR3DM_READ_ACCEL_XYZ            _IOWR(KR3DM_IOC_MAGIC,46,short)
 #define KR3DM_IOC_MAXNR                 48
+#define KR3DM_MODE_NORMAL      0
+#define KR3DM_MODE_SLEEP       2
+#define KR3DM_MODE_WAKE_UP     3
+
 
 // this proc file system's path is "/proc/driver/bma020"
 // usage :	(at the path) type "cat bma020" , it will show short information for current accelation
@@ -107,8 +111,7 @@ static irqreturn_t bma020_acc_isr( int irq, void *unused, struct pt_regs *regs )
 
 int bma020_open (struct inode *inode, struct file *filp)
 {
-	printk("%s \n",__func__); 	
-	gprintk("start\n");
+	gprintk("\n");
 	return 0;
 }
 
@@ -124,119 +127,50 @@ ssize_t bma020_write (struct file *filp, const char *buf, size_t count, loff_t *
 
 int bma020_release (struct inode *inode, struct file *filp)
 {
-	printk("%s \n",__func__); 
+	gprintk("\n");
 	
 	return 0;
 }
-
-#if 0
-int bma020_ioctl(struct inode *inode, struct file *filp, unsigned int ioctl_num,  unsigned long arg)
-{
-	bma020acc_t accels;
-	unsigned int arg_data; 
-	int err = 0;
-	
-	gprintk("start\n");
-	switch( ioctl_num )
-	{
-		case IOCTL_BMA020_GET_ACC_VALUE :
-			{
-				bma020_read_accel_xyz( &accels );
-
-				gprintk( "acc data x = %d  /  y =  %d  /  z = %d\n", accels.x, accels.y, accels.z );
-				
-				if( copy_to_user( (bma020acc_t*)arg, &accels, sizeof(bma020acc_t) ) )
-				{
-					err = -EFAULT;
-				}   
-
-			}
-			break;
-		
-		case IOC_SET_ACCELEROMETER :  
-			{
-				if( copy_from_user( (unsigned int*)&arg_data, (unsigned int*)arg, sizeof(unsigned int) ) )
-				{
-				
-				}
-				if( arg_data == BMA020_POWER_ON )
-				{
-					printk( "ioctl : bma020 power on\n" );
-					bma020_set_mode( BMA020_MODE_NORMAL );
-				}
-				else
-				{
-					printk( "ioctl : bma020 power off\n" );
-					bma020_set_mode( BMA020_MODE_SLEEP );
-				}
-			}
-			break;
-		default : 
-			break;
-	}
-	return err;
-	
-}
-#endif
-
 
 int bma020_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,  unsigned long arg)
 {
 	int err = 0;
 	unsigned char data[6];
 
-	printk("[BMA150] ioctl cmd: %x arg: %x\n", cmd, arg);
-	switch(cmd)
-	{
+	gprintk("ioctl cmd: %x arg: %x\n", cmd, arg);
+	switch(cmd) {
 	    case KR3DM_READ_ACCEL_XYZ:
-	      bma020_set_mode( BMA020_MODE_NORMAL );
-              err = bma020_read_accel_xyz((bma020acc_t*)data);
-              if(copy_to_user((bma020acc_t*)arg,(bma020acc_t*)data,6)!=0) {
-                      printk("copy_to error\n");
-                      return -EFAULT;
-              }
-              return err;
+                err = bma020_read_accel_xyz((bma020acc_t*)data);
+                if(copy_to_user((bma020acc_t*)arg,(bma020acc_t*)data,6)!=0) {
+                        printk("copy_to error\n");
+                        return -EFAULT;
+                }
+                return err;
+            case KR3DM_SET_MODE:
+                if(copy_from_user(data,(unsigned char*)arg,1)!=0) {
+                    printk("[BMA150] copy_from_user error\n");
+                    return -EFAULT;
+                }
+                switch (data[0]) {
+                    case KR3DM_MODE_NORMAL:
+                      data[0] = BMA020_MODE_NORMAL;
+                      break;
+                    case KR3DM_MODE_WAKE_UP:
+                      data[0] = BMA020_MODE_WAKE_UP;
+                      break;
+                    case KR3DM_MODE_SLEEP:
+                      data[0] = BMA020_MODE_SLEEP;
+                      break;
+                    default:
+                      break;
+                }
+                err = bma020_set_mode(*data);
+                gprintk("set mode to %d\n", *data);
+                return err;
 	    default:
 	      break;
 	}
 	return 0;
-	/* check cmd */
-	if(_IOC_TYPE(cmd) != BMA150_IOC_MAGIC)
-	{
-#if DEBUG       
-		printk("cmd magic type error\n");
-#endif
-		return -ENOTTY;
-	}
-	if(_IOC_NR(cmd) > BMA150_IOC_MAXNR)
-	{
-#if DEBUG
-		printk("cmd number error\n");
-#endif
-		return -ENOTTY;
-	}
-
-	if(_IOC_DIR(cmd) & _IOC_READ)
-		err = !access_ok(VERIFY_WRITE,(void __user*)arg, _IOC_SIZE(cmd));
-	else if(_IOC_DIR(cmd) & _IOC_WRITE)
-		err = !access_ok(VERIFY_READ, (void __user*)arg, _IOC_SIZE(cmd));
-	if(err)
-	{
-#if DEBUG
-		printk("cmd access_ok error\n");
-#endif
-		return -EFAULT;
-	}
-	#if 0
-	/* check bam150_client */
-	if( bma150_client == NULL)
-	{
-#if DEBUG
-		printk("I2C driver not install\n");
-#endif
-		return -EFAULT;
-	}
-	#endif
 
 	switch(cmd)
 	{
@@ -346,6 +280,7 @@ void bma020_chip_init(void)
 	/* set bandwidth to 25 HZ */
 	// Default for Moment Eclaire is 25HZ
 	bma020_set_bandwidth(BMA020_BW_100HZ);
+        //bma020_set_mode( BMA020_MODE_NORMAL );
 
 	/* for interrupt setting */
 //	bma020_set_low_g_threshold( BMA020_HG_THRES_IN_G(0.35, 2) );
@@ -393,34 +328,15 @@ int bma020_acc_start(void)
 
 	bma020_chip_init();
 
-	gprintk("[BMA020] read_xyz ==========================\n");
 	bma020_read_accel_xyz( &accels );
-	gprintk("[BMA020] x = %d  /  y =  %d  /  z = %d\n", accels.x, accels.y, accels.z );
+	gprintk("x = %d  /  y =  %d  /  z = %d\n", accels.x, accels.y, accels.z );
 
-	gprintk("[BMA020] ===================================\n");
 	
-	/* only for test */
-	#if 0
-	printk( "before get xyz\n" );
-	mdelay(3000);
-
-	while(1)
-	{
-		bma020_read_accel_xyz( &accels );
-
-		printk( "acc data x = %d  /  y =  %d  /  z = %d\n", accels.x, accels.y, accels.z );
-	
-		mdelay(100);
-	}
-	#endif
-
 #ifdef BMA020_PROC_FS
 	create_proc_read_entry(DRIVER_PROC_ENTRY, 0, 0, bma020_proc_read, NULL);
 #endif	//BMA020_PROC_FS
 
 	bma020_set_mode(BMA020_MODE_SLEEP);
-	gprintk("[BMA020] set_mode BMA020_MODE_SLEEP\n");
-	
 	return 0;
 }
 
@@ -438,43 +354,8 @@ void bma020_acc_end(void)
 
 static int bma020_accelerometer_probe( struct platform_device* pdev )
 {
-/* not use interrupt */
-#if 0	
-	int ret;
-
-	//enable_acc_pins();
-	/*
-	mhn_gpio_set_direction(MFP_ACC_INT, GPIO_DIR_IN);
-	mhn_mfp_set_pull(MFP_ACC_INT, MFP_PULL_HIGH);
-	*/
-
-	bma020_irq_num = platform_get_irq(pdev, 0);
-	ret = request_irq(bma020_irq_num, (void *)bma020_acc_isr, IRQF_DISABLED, pdev->name, NULL);
-	if(ret) {
-		printk("[BMA020 ACC] isr register error\n");
-		return ret;
-	}
-
-	//set_irq_type (bma020_irq_num, IRQT_BOTHEDGE);
-	
-	/* if( request_irq( IRQ_GPIO( MFP2GPIO(MFP_ACC_INT) ), (void *) bma020_acc_isr, 0, "BMA020_ACC_ISR", (void *)0 ) )
-	if(
-	{
-		printk ("[BMA020 ACC] isr register error\n" );
-	}
-	else
-	{
-		printk( "[BMA020 ACC] isr register success!!!\n" );
-	}*/
-	
-	// set_irq_type ( IRQ_GPIO( MFP2GPIO(MFP_ACC_INT) ), IRQT_BOTHEDGE );
-
-	/* if interrupt don't register Process don't stop for polling mode */ 
-
-#endif 
 	return bma020_acc_start();
 }
-
 
 static int bma020_accelerometer_suspend( struct platform_device* pdev, pm_message_t state )
 {

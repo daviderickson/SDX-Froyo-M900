@@ -5,9 +5,6 @@
 #include <linux/sched.h>
 #include <linux/workqueue.h>
 
-//#include <asm/hardware.h>
-//#include <asm/arch/gpio.h>
-//add by inter.park
 #include <mach/hardware.h>
 #include <linux/gpio.h>
 
@@ -16,10 +13,7 @@
 
 #include "bma020_i2c.h"
 
-//static int i2c_acc_bma020_attach_adapter(struct i2c_adapter *adapter);
-//static int i2c_acc_bma020_probe_client(struct i2c_adapter *, int,  int);
 static int __devinit i2c_acc_bma020_probe(struct i2c_client *client, const struct i2c_device_id *id);
-//static int i2c_acc_bma020_detach_client(struct i2c_client *client);
 static int __devexit i2c_acc_bma020_remove(struct i2c_client *client);
 static int i2c_acc_bma020_detect(struct i2c_client *client, int kind, struct i2c_board_info *info);
 
@@ -68,8 +62,6 @@ struct i2c_driver acc_bma020_i2c_driver =
 	.detect =       i2c_acc_bma020_detect,
 	.id_table =     i2c_acc_bma020_idtable,
 	.address_data = &addr_data
-//	.attach_adapter	= &i2c_acc_bma020_attach_adapter,
-//	.detach_client	= &i2c_acc_bma020_detach_client,
 };
 
 MODULE_DEVICE_TABLE(i2c, i2c_acc_bma020_idtable);
@@ -77,8 +69,8 @@ MODULE_DEVICE_TABLE(i2c, i2c_acc_bma020_idtable);
 int i2c_acc_bma020_init(void)
 {
 	int ret;
+	gprintk("\n");
 
-	printk("[BMA020] i2c_init\n");
 	if ( (ret = i2c_add_driver(&acc_bma020_i2c_driver)) ) 
 	{
 		printk("Driver registration failed, module not inserted.\n");
@@ -89,7 +81,7 @@ int i2c_acc_bma020_init(void)
 
 void i2c_acc_bma020_exit(void)
 {
-	printk("[BMA020] i2c_exit\n");
+        gprintk("\n");
 	i2c_del_driver(&acc_bma020_i2c_driver); 
 }
 
@@ -156,14 +148,9 @@ char i2c_acc_bma020_write( u8 reg, u8 *val )
 	return err;
 }
 
-//static int i2c_acc_bma020_attach_adapter(struct i2c_adapter *adapter)
-//{
-//	return i2c_probe(adapter, &addr_data, &i2c_acc_bma020_probe_client);
-//}
-
 static int i2c_acc_bma020_detect(struct i2c_client *client, int kind, struct i2c_board_info *info)
 {
-        printk("[BMA020] i2c_detect\n");
+        gprintk("\n");
         strlcpy(info->type, "kr3dm", I2C_NAME_SIZE);
         return 0;
 }
@@ -171,7 +158,7 @@ static int i2c_acc_bma020_detect(struct i2c_client *client, int kind, struct i2c
 static int __devinit i2c_acc_bma020_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	int err = 0;
-	printk("[BMA020] i2c_probe\n");
+        gprintk("\n");
 
 	if ( !i2c_check_functionality(client->adapter,I2C_FUNC_SMBUS_BYTE_DATA) ) {
 		printk(KERN_INFO "byte op is not permited.\n");
@@ -185,20 +172,13 @@ static int __devinit i2c_acc_bma020_probe(struct i2c_client *client, const struc
 
 
 	return 0;
-
-//	ERROR1:
-//		printk("i2c_acc_bma020_probe_client() ERROR1\n");/* add by inter.park */
-//		kfree(new_client);
-//	ERROR0:
-//		printk("i2c_acc_bma020_probe_client() ERROR0\n");/* add by inter.park */
-//    	return err;
 }
 
 static int __devexit i2c_acc_bma020_remove(struct i2c_client *client)
 {
 	int err;
 
-	printk("[BMA020] i2c_detach_client\n");
+        gprintk("\n");
 
 	g_client = NULL;
 	return 0;

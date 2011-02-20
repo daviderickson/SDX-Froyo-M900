@@ -708,7 +708,6 @@ int bma020_read_accel_xyz(bma020acc_t * acc)
 {
 	int comres;
 	unsigned char data[6];
-	unsigned char data2[8];
 
 	if (p_bma020==0)
 		return E_BMA020_NULL_PTR;
@@ -730,12 +729,7 @@ int bma020_read_accel_xyz(bma020acc_t * acc)
 	//acc->x = (-1)*(acc->x);
 	acc->y = (-1)*(acc->y);
 	//acc->z = (-1)*(acc->z);
-	printk("[ACCEL] X: %+03d Y: %+03d Z: %+03d\n", acc->x, acc->y, acc->z);
 
-
-	p_bma020->BMA020_BUS_READ_FUNC(p_bma020->dev_addr, 0x16, &data2[0],8);
-	//p_bma020->BMA020_BUS_READ_FUNC(p_bma020->dev_addr, 0x36, &data2[0],8);
-	printk("[BMA150] Settings %#x %#x %#x %#x %#x %#x %#x %#x\n", data2[0], data2[1], data2[2], data2[3], data2[4], data2[5],data2[6],data2[7]);
 	return comres;
 }
 
