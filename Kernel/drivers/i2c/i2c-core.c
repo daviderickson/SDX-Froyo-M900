@@ -295,7 +295,9 @@ i2c_new_device(struct i2c_adapter *adap, struct i2c_board_info const *info)
 	strlcpy(client->name, info->type, sizeof(client->name));
 
 	/* Check for address business */
+	printk("1\n");
 	status = i2c_check_addr(adap, client->addr);
+        printk("2\n");
 	if (status)
 		goto out_err;
 
@@ -303,14 +305,19 @@ i2c_new_device(struct i2c_adapter *adap, struct i2c_board_info const *info)
 	client->dev.bus = &i2c_bus_type;
 	client->dev.type = &i2c_client_type;
 
+        printk("3\n");
 	dev_set_name(&client->dev, "%d-%04x", i2c_adapter_id(adap),
 		     client->addr);
+        printk("4\n");
 	status = device_register(&client->dev);
+        printk("5\n");
 	if (status)
 		goto out_err;
 
 	dev_dbg(&adap->dev, "client [%s] registered with bus id %s\n",
 		client->name, dev_name(&client->dev));
+        printk("client [%s] registered with bus id %s\n",
+                client->name, dev_name(&client->dev));
 
 	return client;
 
@@ -318,6 +325,8 @@ out_err:
 	dev_err(&adap->dev, "Failed to register i2c client %s at 0x%02x "
 		"(%d)\n", client->name, client->addr, status);
 	kfree(client);
+        printk("Failed to register i2c client %s at 0x%02x "
+                "(%d)\n", client->name, client->addr, status);
 	return NULL;
 }
 EXPORT_SYMBOL_GPL(i2c_new_device);
@@ -1215,7 +1224,9 @@ static int i2c_detect_address(struct i2c_client *temp_client, int kind,
 	/* Finally call the custom detection function */
 	memset(&info, 0, sizeof(struct i2c_board_info));
 	info.addr = addr;
+	printk("Before detect\n");
 	err = driver->detect(temp_client, kind, &info);
+        printk("After detect %d\n", err);
 	if (err) {
 		/* -ENODEV is returned if the detection fails. We catch it
 		   here as this isn't an error. */
@@ -1227,6 +1238,9 @@ static int i2c_detect_address(struct i2c_client *temp_client, int kind,
 		dev_err(&adapter->dev, "%s detection function provided "
 			"no name for 0x%x\n", driver->driver.name,
 			addr);
+                printk("%s detection function provided "
+                        "no name for 0x%x\n", driver->driver.name,
+                        addr);
 	} else {
 		struct i2c_client *client;
 
@@ -1234,11 +1248,19 @@ static int i2c_detect_address(struct i2c_client *temp_client, int kind,
 		dev_dbg(&adapter->dev, "Creating %s at 0x%02x\n",
 			info.type, info.addr);
 		client = i2c_new_device(adapter, &info);
+                printk("Creating %s at 0x%02x\n",
+                        info.type, info.addr);
+		printk("Before i2c_new_device\n");
+                client = i2c_new_device(adapter, &info);
+                printk("After i2c_new_device\n");
 		if (client)
 			list_add_tail(&client->detected, &driver->clients);
-		else
+		else {
 			dev_err(&adapter->dev, "Failed creating %s at 0x%02x\n",
 				info.type, info.addr);
+                        printk("Failed creating %s at 0x%02x\n",
+                                info.type, info.addr);
+		}
 	}
 	return 0;
 }
@@ -1249,6 +1271,7 @@ static int i2c_detect(struct i2c_adapter *adapter, struct i2c_driver *driver)
 	struct i2c_client *temp_client;
 	int i, err = 0;
 	int adap_id = i2c_adapter_id(adapter);
+	printk("i2c_detect adapter: %s driver: %s\n", adapter->name, driver->driver.name);
 
 	address_data = driver->address_data;
 	if (!driver->detect || !address_data)
@@ -1287,33 +1310,44 @@ static int i2c_detect(struct i2c_adapter *adapter, struct i2c_driver *driver)
 	}
 
 	/* Stop here if the classes do not match */
-	if (!(adapter->class & driver->class))
+	if (!(adapter->class & driver->class)) {
+	        printk("i2c_detect class mismatch\n");
 		goto exit_free;
+	}
 
 	/* Stop here if we can't use SMBUS_QUICK */
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_QUICK)) {
 		if (address_data->probe[0] == I2C_CLIENT_END
-		 && address_data->normal_i2c[0] == I2C_CLIENT_END)
+		 && address_data->normal_i2c[0] == I2C_CLIENT_END) {
+		    printk("i2c_detect functionality failure\n");
 			goto exit_free;
+		}
 
 		dev_warn(&adapter->dev, "SMBus Quick command not supported, "
 			 "can't probe for chips\n");
 		err = -EOPNOTSUPP;
+                printk("i2c_detect functionality failure\n");
 		goto exit_free;
 	}
 
 	/* Probe entries are done second, and are not affected by ignore
 	   entries either */
 	for (i = 0; address_data->probe[i] != I2C_CLIENT_END; i += 2) {
+	        printk("i2c_detect adapter id: %d\n", adap_id);
 		if (address_data->probe[i] == adap_id
 		 || address_data->probe[i] == ANY_I2C_BUS) {
 			dev_dbg(&adapter->dev, "found probe parameter for "
 				"adapter %d, addr 0x%02x\n", adap_id,
 				address_data->probe[i + 1]);
+                        printk("i2c_detect found probe parameter for "
+                                "adapter %d, addr 0x%02x\n", adap_id,
+                                address_data->probe[i + 1]);
 			temp_client->addr = address_data->probe[i + 1];
 			err = i2c_detect_address(temp_client, -1, driver);
-			if (err)
+			if (err) {
+			    printk("i2c_detect error from i2c_detect_address %d\n", err);
 				goto exit_free;
+			}
 		}
 	}
 

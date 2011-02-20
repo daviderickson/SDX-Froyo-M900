@@ -929,6 +929,7 @@ ERROR0:
 
 static int i2c_ak8973b_detect(struct i2c_client *client, int kind, struct i2c_board_info *info)
 {
+        gprintk("detect\n");
 	strlcpy(info->type, "ak8973b", I2C_NAME_SIZE);
 	return 0;
 }
